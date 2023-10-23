@@ -1,0 +1,17 @@
+#!/bin/bash
+
+username=$1
+gid=$(grep dc1 /etc/passwd | awk -F ":" '{ print $4 }')
+
+if [ $(grep $username /home/dc1/etc/passwd | head -n1 | wc -l) -eq 0 ]; then
+        echo "No such user $username"
+        exit 0
+fi
+
+if [ -d "/home/$username" ]; then
+        rm -rf /home/$username
+        echo "/home/$username has been deleted"
+fi
+
+deluser $username
+delgroup $(grep $gid /etc/group | awk -F ":" '{ print $1 }')

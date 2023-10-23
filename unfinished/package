@@ -1,0 +1,19 @@
+#!/bin/bash
+
+packet=$1
+depends=$(apt show 2>/dev/null $packet | grep "Depends" | awk -F "," '{for (i=2; i<=NF; i++) print $i}')
+sources=$(apt show 2>/dev/null $packet | grep "APT-Sources" | awk '{ print $2 }')
+printf "\nPacket $1 will be installed from: $sources\n\nHere's all the depends: \n$depends\n\n"
+
+echo "Checking depends..."
+for depend in $depends
+do
+        if [[ !($depend =~ ['()']) ]]; then
+                check=$(dpkg -l | grep "$depend")
+                if [ -z "$check" ]; then
+                        printf "$depend is NOT installed\n"
+                else
+                        printf "$depend $(dpkg -l | grep "$depend" | awk '{ print $3 }') is installed \n"
+                fi
+        fi
+done

@@ -1,0 +1,23 @@
+#!/bin/bash
+
+    filepath='/home/qwe/services.log'
+        if [ ! -f "$file" ]; then
+            touch /home/qwe/$filepath
+        fi
+    
+    printf "Working services\n" > $filepath
+    for service in $(service --status-all | grep "+" | awk '{print $4}')
+    do
+        printf "$service\n" >> $filepath
+        if [[ $(pidof $service) ]]; then
+            printf "\tPID:$(pidof $service)\n" >> $filepath
+        fi
+    done
+
+    printf "\n\nNOT working services\n" >> $filepath
+    for service in $(service --status-all | grep "-" | awk '{print $4}')
+    do
+        printf "$service\n" >> $filepath
+    done
+
+    cat $filepath

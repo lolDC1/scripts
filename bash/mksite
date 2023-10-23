@@ -1,0 +1,145 @@
+#!/bin/bash
+
+wp() {
+    #wp-config
+    echo "Creating wp-config.php..."
+    cp $var_www/wp-config-sample.php $var_www/wp-config.php
+    sed -i -e "s/database_name_here/$db_name/g" $var_www/wp-config.php
+    sed -i -e "s/username_here/$db_username/g" $var_www/wp-config.php
+    sed -i -e "s/password_here/$db_pass/g" $var_www/wp-config.php
+
+    read -p "Enter sql query file path: " sqlfile
+    cp $sqlfile temp.sql
+
+    #wp-options
+    echo "Creating wp-options table..."
+    sed -i -e "s/insert_dbname_here/$db_name/g" temp.sql
+    sed -i -e "s/insert_siteurl_here/http:\/\/$sitename/g" temp.sql
+    sed -i -e "s/insert_blogname_here/$sitename/g" temp.sql
+    sed -i -e "s/insert_mail_here/tmpmail@gmail.com/g" temp.sql
+
+    mysql_config_editor set --login-path="root" --host="localhost" --user="root" --password
+    mysql --login-path=root < temp.sql
+    rm -rf temp.sql
+}
+
+extract() {
+    tar -xvf $archive -C $var_www > /dev/null
+    if [[ $(ls -l $var_www) == *2* ]]; then
+        echo "Incorrect site path. Changing..."
+        dir=$(ls -l $var_www | awk '{print $9}' | tail -1)
+        mv $var_www/$dir/* $var_www
+    fi
+}
+
+#sitename
+if [ -z "$1" ]; then # if no param
+    read -p "Enter name of site: " sitename
+else
+    sitename=$1
+fi
+
+#sites-available
+sites_available="/etc/apache2/sites-available/$sitename.conf"
+if [ ! -f $sites_available  ]; then
+    echo "Creating apache sites-available config..."
+    touch $sites_available
+    echo "<VirtualHost *:80>
+            ServerAdmin webmaster@localhost
+            ServerName www.$sitename
+            ServerAlias $sitename
+            DocumentRoot /var/www/$sitename/
+
+            ErrorLog ${APACHE_LOG_DIR}/$sitename-error.log
+            CustomLog ${APACHE_LOG_DIR}/$sitename-access.log combined
+    </VirtualHost>" > $sites_available
+    
+else
+    echo "$sites_available already exists. Moving on..."
+fi
+echo "Enabling $sitename.conf..."
+a2ensite $sitename.conf > /dev/nul
+
+#db (user,grants)
+read -p "Create database? [y/n]: " yn
+        case $yn in 
+            [Yy]* ) # creating db
+                echo "Creating db..."
+                read -p "Enter username: " db_username
+                read -p "Enter password: " db_pass
+                read -p "Enter db name: " db_name
+
+                echo "Entering root user..."
+                mysql_config_editor set --login-path="root" --host="localhost" --user="root" --password
+                mysql --login-path=root -e "CREATE USER '$db_username'@'localhost' IDENTIFIED BY '$db_pass';"
+                mysql --login-path=root -e "CREATE DATABASE $db_name;"
+                mysql --login-path=root -e "GRANT ALL PRIVILEGES ON $db_name.* TO '$db_username'@'localhost' WITH GRANT OPTION;"
+                ;;
+            [Nn]* ) 
+                ;;
+            * )
+                echo "Input error"
+                ;;
+        esac
+
+#/var/www mkdir, chown
+var_www="/var/www/$sitename"
+if [ ! -d $var_www ]; then
+    echo "Creating $var_www with owner www-data..."
+    mkdir $var_www
+    chown www-data:www-data $var_www
+else
+    echo "$var_www already exists. Moving on..."
+fi
+
+#check if sites files exists
+echo "Looking for sites files..."
+if [ -z "$(ls -A $var_www)" ]; then
+   echo "No existing files"
+
+    #download site or set path to archive
+    read -p "Download site archive via link or set path? [link/path]: " options
+        case $options in 
+            [Ll]* ) # wget link
+                read -p "Enter archive link (*.tar.gz): " link
+                archive=site-archive.tar.gz
+                wget $link -q -P ~ -O $archive
+                extract
+                ;;
+            [Pp]* ) # set path
+                read -p "Enter archive path (*.tar.gz): " archive
+                extract
+                ;;
+            * )
+                echo "Input error"
+                ;;
+        esac
+else
+   echo "Not Empty"
+fi
+
+service apache2 reload
+printf "\nDon't forget to change /etc/hosts\nYour link: http://$sitename\n"
+if [ ! -z $db_username ]; then
+    printf "Your db username: $db_username\n"
+    printf "Your db name: $db_name\n"
+    printf "Your db password: $db_pass\n"
+fi
+
+if [ ! -f $var_www/wp-config.php  ]; then 
+    if [ -f $var_www/wp-config-sample.php  ]; then 
+        read -p "Autofill wp-config and database? [y/n]: " yn
+        case $yn in 
+            [Yy]* ) # creating db
+                wp
+                ;;
+            [Nn]* ) 
+                ;;
+            * )
+                echo "Input error"
+                ;;
+        esac
+    else
+        echo "Unable to find wp-config-sample.php"
+    fi
+fi

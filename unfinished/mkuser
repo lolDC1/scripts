@@ -1,0 +1,36 @@
+#!/bin/bash
+
+uname=$1
+group=$2
+dir=$3
+
+if $((grep uname /etc/passwd | wc -l -eq 1)); then
+        printf "ERROR\nUser already exist\n"
+        exit 0
+fi
+
+printf "Creating user $1 to dir $3 ...\n"
+if test -d "$dir"; then
+        printf "ERROR\nDirectory already exist\n"
+        exit 0
+fi
+
+useradd -m -d $dir -g $group $uname
+printf "User was created\n"
+passwd $uname
+
+usr="$(grep $1 /etc/passwd | awk -F ":" '{print $1}')"
+pwd="$(grep $1 /etc/passwd | awk -F ":" '{print $2}')"
+uid="$(grep $1 /etc/passwd | awk -F ":" '{print $3}')"
+gid="$(grep $1 /etc/passwd | awk -F ":" '{print $4}')"
+fun="$(grep $1 /etc/passwd | awk -F ":" '{print $5}')"
+dir="$(grep $1 /etc/passwd | awk -F ":" '{print $6}')"
+shl="$(grep $1 /etc/passwd | awk -F ":" '{print $7}')"
+
+printf "Username: $usr\n"
+printf "Encrypted password: $pwd\n"
+printf "User ID number: $uid\n"
+printf "User's group ID number: $gid\n"
+printf "Full name of the user: $fun\n"
+printf "User home directory: $dir\n"
+printf "Login shell: $shl\n"

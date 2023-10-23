@@ -1,0 +1,24 @@
+#!/bin/bash
+
+drives=$(fdisk -l | grep 'sd' | grep 'Disk' | awk '{print $2}' | tr -d \:)
+echo "Number of drives: $(sudo fdisk -l | grep 'sd' | grep 'Disk' | wc -l)"
+for drive in $drives
+do
+        echo "$drive"
+        partitions=$(fdisk -l | grep $drive | grep -v 'Disk' | awk '{print $1}')
+        if [ $(fdisk -l | grep $drive | grep -v 'Disk' | awk '{print $1}' |  wc -l) -eq 0 ]
+                then
+                        echo "  No partitions"
+                else
+                        for part in $partitions
+                        do
+                                printf "        $part   "
+                                if [ -z $(df -Th | grep $part | awk '{print $2}') ]
+                                then
+                                        echo "NaN"
+                                fi
+                                df -Th | grep $part | awk '{print $2}'
+                        done
+                fi
+done
+

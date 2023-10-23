@@ -1,0 +1,84 @@
+#!/bin/bash
+
+# При запуске без параметров можно выбрать два режима: пройтись по всем сервисам или выбрать один (строка 60)
+# Функция action сначала определяет активный сервис или нет, а потом задает определенные вопрос зависимо от статуса сервиса
+
+action() {
+    if [ "$(service --status-all | grep $service_name | awk '{print $2}')" = "+" ]; then # if service is active
+        printf "$service_name is ${green}active${clear}\n"
+        read -p "Restart/Reload/Stop $service_name? [restart/reload/stop]: " options; # options
+        case $options in 
+            [Rr]es* )
+                echo "Restarting..."
+                systemctl restart $service_name
+                ;;
+            [Rr]el* )
+                echo "Reloading..."
+                systemctl restart $service_name
+                ;;
+            [Ss]to* )
+                echo "Stopping..."
+                systemctl restart $service_name
+                ;;
+            [Ss]ta* )
+                echo "Starting..."
+                systemctl start $service_name
+                ;;
+            [Qq]* )
+                exit
+                ;;
+            * )
+                ;;
+        esac
+    elif [ "$(service --status-all | grep $service_name | awk '{print $2}')" = "-" ]; then
+        printf "$service_name is ${red}not active${clear}\n" # if service is not active
+        read -p "Start $service_name? [y/n]: " options; # options
+        case $options in 
+            [Yy]* )
+                echo "Starting..."
+                systemctl start $service_name
+                ;;
+            [Qq]* )
+                exit
+                ;;
+            * )
+                ;;
+        esac
+    else
+        echo "No such service named $service_name"
+    fi
+}
+
+clear
+green='\033[0;32m' # font colors
+red='\033[0;31m'
+clear='\033[0m'
+
+if [ -z "$1" ]; then # if no param
+    printf "List of ${green}active${clear} services:\n" # list of actives
+    service --status-all | grep "+" | awk '{print $4}'
+    printf "\nList of ${red}not active${clear} services:\n" # list of not actives
+    service --status-all | grep "-" | awk '{print $4}'
+    echo "---------------------------------------------"
+
+    read -p "Ask for every or chose one service? [all/one]: " options
+    case $options in 
+        [Aa]* ) # ask for every service
+            for service_name in $(service --status-all | awk '{print $4}') 
+            do
+                action
+            done
+            ;;
+        [Oo]* ) # ask for one choosen service
+            read -p "Enter name of service: " service_name
+            action
+            ;;
+        * )
+            ;;
+    esac
+
+else # if param
+    service_name=$1
+    action
+    
+fi

@@ -1,0 +1,29 @@
+#!/bin/bash
+
+#gathers system info and puts it into the file
+
+hnm=$(hostname)
+usr=$(whoami)
+hnm=$(lsb_release -d | awk '{print $2,$3,$4}')
+ver=$(ifconfig)
+net=$(netstat -rn)
+
+
+echo "Searching for hostname..."
+echo "Hostname: $hnm" > systeminfo.txt
+
+echo "Searching for user..."
+echo "User: $usr" >> systeminfo.txt
+
+echo "Searching for current version..."
+echo "Version: $hnm" >> systeminfo.txt
+
+echo "Searching for net configs..."
+echo "Net configs: $ver" >> systeminfo.txt
+
+echo "Searching for Routes..."
+echo "Routes: $net" >> systeminfo.txt
+
+
+printf "\n\n"
+cat systeminfo.txt

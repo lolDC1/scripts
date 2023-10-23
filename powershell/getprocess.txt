@@ -1,0 +1,1 @@
+Get-Process | Sort -Property PrivateMemorySize -Descending | Format-Table -Property Name, PrivateMemorySize, CPU, Path | Select -First 10

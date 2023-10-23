@@ -1,0 +1,95 @@
+#!/bin/bash
+
+	file='/home/qwe/list.txt'
+	if [ ! -f "$file" ]; then
+		echo "File does not exists"
+		exit
+	fi
+
+	read -p "Want to install or delete programs? [i/d/q] " mode
+	read -p "Silent mode? [y/n] " silent
+
+	if [ "$mode" != "${mode#[Ii]}" ] && [ "$silent" != "${silent#[Nn]}" ]; then
+		for prog in $(cat $file)
+		do
+			check=$(dpkg -l | grep "$prog")
+			if [ -z "$check" ]; then
+				printf "\n$prog is NOT installed\n"
+				read -p "Want to install? [y/n/q] " yn
+				case $yn in
+					[Yy]* )
+						apt install $prog
+						;;
+					[Nn]* )
+						;;
+					[Qq]* )
+						exit
+						;;
+					* )
+						echo "Incorrect response"
+						;;
+				esac
+			else
+				printf "\n$prog is installed \n"
+			fi
+		done
+
+		elif [ "$mode" != "${mode#[Dd]}" ] && [ "$silent" != "${silent#[Nn]}" ]; then
+			for prog in $(cat $file)
+			do
+				check=$(dpkg -l | grep "$prog")
+					if [ ! -z "$check" ]; then
+							printf "\n$prog is installed\n"
+							read -p "Want to delete? [y/n/q] " yn
+							case $yn in
+							[Yy]* )
+								read -p "Are you sure? [y/n/q] " $yn;
+								case $yn in
+									[Yy]* )
+										apt purge $prog
+										;;
+									* )
+										;;
+								esac
+								;;
+								[Nn]* )
+									;;
+								[Qq]* )
+									exit
+									;;
+								* )
+									echo "Incorrect response"
+									;;
+							esac
+					else
+						printf "\n$prog is NOT installed \n"
+					fi
+			done
+
+		elif [ "$mode" != "${mode#[Ii]}" ] && [ "$silent" != "${silent#[Yy]}" ]; then
+			for prog in $(cat $file)
+			do
+				check=$(dpkg -l | grep "$prog")
+					if [ -z "$check" ]; then
+						printf "\n$prog is NOT installed\n"
+						apt install $prog
+					else
+						printf "\n$prog is installed \n"
+					fi
+			done
+
+		elif [ "$mode" != "${mode#[Dd]}" ] && [ "$silent" != "${silent#[Yy]}" ]; then
+			for prog in $(cat $file)
+			do
+				check=$(dpkg -l | grep "$prog")
+				if [ ! -z "$check" ]; then
+					printf "\n$prog is installed\n"
+					apt purge $prog
+				else
+						printf "\n$prog is NOT installed \n"
+				fi
+			done
+
+		else
+			exit
+		fi

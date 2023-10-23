@@ -1,0 +1,9 @@
+#!/bin/bash
+        for int in $(netstat -i | awk '{print $1}' | grep -vE '(Kernel|Iface|lo)'); do
+                if [ $(grep "$int" /etc/netplan/00-installer-config.yaml | wc -l) -eq 0 ]; then
+                        printf "$int has not assigned IP address\nEnter IP adress: "
+                        read ipadd
+                        printf "    $int:\n      addresses:\n      - $ipadd" >> /etc/netplan/00-installer-co>                        echo "IP address has been assigned"
+                fi
+        done
+        cat /etc/netplan/00-installer-config.yaml

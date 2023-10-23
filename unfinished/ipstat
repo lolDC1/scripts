@@ -1,0 +1,10 @@
+#!/bin/bash
+
+printf "Default gateway: "
+netstat -rf | grep default | awk '{print $2}'
+
+printf "DNS Server: "
+grep nameserver /etc/resolv.conf | awk '{print $2}'
+
+printf "IP Address: "
+hostname -I | awk '{ print $1 }'

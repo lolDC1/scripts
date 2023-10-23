@@ -1,0 +1,33 @@
+#!/bin/bash
+
+
+	list=$(apt list --upgradable | awk -F "/" '{ print $1 }' | grep -v "Listing...")
+	printf "List of outdate packages\n $list\n\n"
+	read -p "Install all or install one package [all/one] " mode
+	case $mode in
+		[Aa]* )
+			apt upgrade
+			;;
+		[Oo]* )
+			while true
+			do
+				read -p "Enter name of package: " package
+				apt install $package
+				echo ""
+				read -p "Install again? (y/n) " yn
+				case $yn in
+					[Nn]* ) break;;
+				esac
+			done
+			;;
+		* )
+			echo "Incorrect responce"
+			exit
+			;;
+	esac
+
+	echo ""
+	read -p "Reboot? (y/n) " yn
+	case $yn in
+		[Yy]* ) reboot;;
+	esac
