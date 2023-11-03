@@ -1,0 +1,106 @@
+#!/bin/bash
+
+cd "$(dirname "$0")"
+RED='\033[0;31m'
+GRE='\033[0;32m'
+YEL='\033[0;33m'
+NRM='\033[0m'
+
+if [ $# -lt 1  ]; then
+    echo "No options found!"
+    exit 0
+fi
+
+scriptsDir () {
+    home_path=$(readlink -f $0) #пофиксить
+    dir=$1
+    if [ ! -d $1 ]; then
+		printf "${RED}No such directory${NRM}\n"
+        exit 0
+	fi
+    file_list=$(ls $dir)
+
+    printf "${YEL}$file_list \nAll files will be renamed and the new files will be created.${NRM}\n"
+    read -p "Want to proceed? [y/n] " yn
+    case $yn in
+        [Yy]* )
+            ;;
+        [Nn]* )
+            exit 0
+            ;;
+        * )
+            printf "${RED}Bad response${NRM}\n"
+            exit 0
+            ;;
+    esac
+    
+    if [ ! -d "scripts_old" ]; then
+		printf "${GRE}Creating scripts_old dir${NRM}\n"
+        mkdir scripts_old
+	fi
+
+    for file in $file_list; do
+        echo "file $file | scrdir $home_path | scr2dir ${dir}$file"
+        if [[ "$(readlink -f $0)" == "${dir}$file" ]]; then
+            echo "$file = $0"
+        fi
+        if [[ "$file" != "$(basename $0)" ]]; then
+            mv ${dir}$file scripts_old/${file}_old #пофиксить
+            cat scripts_old/${file}_old > ${dir}$file
+            chmod +x ${dir}$file
+        fi
+    done
+
+
+    printf "${GRE}Done! Your old files is in scripts_old directory!${NRM}\n"
+}
+
+scriptFile () {
+    local fileDir="$(basename -- $1)"
+    echo "Checking if file $fileDir exists..."
+        if [ ! -f "$fileDir" ]; then
+            echo "File does not exists"
+            exit 0
+        fi  
+
+    printf "${YEL}$fileDir will be renamed to ${fileDir}_old and the new $fileDir will be created.${NRM}\n"
+    read -p "Want to proceed? [y/n] " yn
+    case $yn in
+        [Yy]* )
+            ;;
+        [Nn]* )
+            exit 0
+            ;;
+        * )
+            printf "${RED}Bad response${NRM}\n"
+            exit 0
+            ;;
+    esac
+    
+    if [ ! -d "scripts_old" ]; then
+		printf "${GRE}Creating scripts_old dir${NRM}\n"
+        mkdir scripts_old
+	fi
+
+    mv $fileDir scripts_old/${fileDir}_old
+    cat scripts_old/${fileDir}_old > $fileDir
+    chmod +x $fileDir
+    printf "${GRE}Done! Your old files is in scripts_old directory!${NRM}\n"
+}
+
+while getopts "f:d:" opt 
+do
+    case $opt in
+        f) 
+            scriptFile "$OPTARG"
+            ;;
+        d) 
+            scriptsDir "$OPTARG"
+            ;;
+        *) 
+            printf "${RED}No reasonable options found!${NRM}\n"
+            exit 0
+            ;;
+    esac
+done
+
