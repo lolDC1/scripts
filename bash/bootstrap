@@ -6,6 +6,12 @@ YEL='\033[0;33m'
 NRM='\033[0m'
 
 
+# Ensure we are running under bash
+if [ "$BASH_SOURCE" = "" ]; then
+    /bin/bash "$0"
+    exit 0
+fi
+
 
 
 #1 айпи
@@ -103,8 +109,33 @@ sshkeyGenrate(){
 #таймзона
 timezoneConfig(){
     clear
-    echo "sup from timezoneConfig"
-}
+    printf "${YEL}Synchronizing to the NIST atomic clock..${NRM}\n"
+    timedatectl set-ntp yes
+    while true; do
+        printf "${YEL}Choose your region or city (e.g. Europe, Amsterdam etc.): ${NRM}"
+        read -p "" region
+        if [ -n "$(timedatectl list-timezones | grep $region)" ]; then
+            printf "${GRE}Found next timezones:\n${NRM}"
+            timedatectl list-timezones | grep $region
+            break
+        else
+            printf "${RED}Can't find region or city with this name\n${NRM}"
+        fi
+    done
+
+    while true; do
+        printf "${YEL}Choose your timezone (e.g. Europe/Amsterdam etc.): ${NRM}"
+        read -p "" timezone
+        if [[ "$timezone" =~ [A-Za-z]+/[A-Za-z]+ && -n "$(timedatectl list-timezones | grep $timezone)" ]]; then
+            timedatectl set-timezone $timezone
+            printf "${GRE}Time has been configured successfully!\n${NRM}"
+            timedatectl | grep "Local time" | sed 's/^ *//'
+            break
+        else
+            printf "${RED}Can't find timezone with this name\n${NRM}"
+        fi
+    done
+    }
     #вывести таймзоны
     #предложить свап
 
