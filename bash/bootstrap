@@ -1,0 +1,206 @@
+#!/bin/bash
+
+RED='\033[0;31m'
+GRE='\033[0;32m'
+YEL='\033[0;33m'
+NRM='\033[0m'
+
+
+
+
+#1 айпи
+ipConfig () {
+    clear
+    defaultConfig=$(ls -A /etc/netplan/ | sort | awk -F '/' '{print}' | awk '/[0-9][0-9]-/{print $0}' | head -n1) #find netplan conf that being used
+    if [ ! -z $defaultConfig ]; then
+        printf "${GRE}Found the default netplan config\n$defaultConfig${NRM}\n"
+        read -p "Change it? [y/n]: " yn
+        case $yn in
+            [Yy]* )
+                printf "${YEL}Creating reserve copy for $defaultConfig to /etc/netplan/old/$defaultConfig.old ${NRM}\n"
+                mkdir -p /etc/netplan/old/ && cp /etc/netplan/$defaultConfig /etc/netplan/old/$defaultConfig.old #save the copy
+                ;;
+            [Nn]* )
+                mainMenu
+                ;;
+            * )
+                printf "${RED}Bad response${NRM}\n"
+                mainMenu
+                ;;
+        esac
+                
+	else #create if cant find existing
+        printf "${YEL}Cant find any netplan configuration files\n${NRM}"
+        read -p "Create a new one? [y/n]: " yn
+        case $yn in
+            [Yy]* )
+                read -p "Enter the name of netplan config (e.g. 00-default-config): " defaultConfig
+                ;;
+            [Nn]* )
+                mainMenu
+                ;;
+            * )
+                printf "${RED}Bad response${NRM}\n"
+                mainMenu
+                ;;
+        esac
+    fi
+
+    #configuring
+    ls /sys/class/net | sort | awk '{print "["NR"]",$0}' 
+    read -p "Enter interface number: " interfaceNum
+    choosedInterface=$(ls /sys/class/net | sort | awk -v n="$interfaceNum" 'NR==n')
+    read -p "Enter ip address and subnet mask (e.g. 192.168.0.123/24): " ipAddress
+    read -p "Enter DNS server (e.g. 192.168.0.1): " DNSservers
+    read -p "Enter default gateway (e.g. 192.168.0.1): " defaultGateway
+    
+    
+    printf "\n${YEL}Config name:${NRM} $defaultConfig \n"
+    printf "${YEL}Interface:${NRM} $choosedInterface \n"
+    printf "${YEL}IP address:${NRM} $ipAddress \n"
+    printf "${YEL}DNS server:${NRM} $DNSservers \n"
+    printf "${YEL}Default gateway:${NRM} $defaultGateway \n"
+
+    read -p "Want to proceed? [y/n]: " yn
+    case $yn in
+        [Yy]* )
+            ;;
+        [Nn]* )
+            mainMenu
+            ;;
+        * )
+            printf "${RED}Bad response${NRM}\n"
+            mainMenu
+            ;;
+    esac
+
+    #applying 
+    echo "network:
+  ethernets:
+    $choosedInterface:
+      addresses:
+      - $ipAddress
+      nameservers:
+        addresses:
+        - $DNSservers
+        search:
+        - $DNSservers
+      routes:
+      - to: default
+        via: $defaultGateway
+  version: 2" > /etc/netplan/$defaultConfig
+    netplan apply
+}
+
+#создание ссш ключей
+sshkeyGenrate(){
+    clear
+    echo "sup from sshkeyGenrate" 
+}
+    #для доступа в этот сервер
+    #для доступа с этого сервера в другой
+
+#таймзона
+timezoneConfig(){
+    clear
+    echo "sup from timezoneConfig"
+}
+    #вывести таймзоны
+    #предложить свап
+
+#фаервол
+firewallConfig(){
+    clear
+    echo "sup from firewallConfig"
+}
+
+#установка базы
+commonPackages(){
+    clear
+    echo "sup from commonPackages"
+}
+    #гит
+        #логин в гит
+    #curl 
+    #wget 
+    #unzip
+    #net-tools
+
+#установка пакетов для направленной работы
+taskOrientedPackages(){
+    clear
+    echo "sup from taskOrientedPackages"
+}
+    #для работы с докер
+    #для работы с питон
+
+#создание юзера
+userAdd(){
+    clear
+    echo "sup from userAdd"
+}
+    #выдача прав
+    #ссш доступ
+
+#обновление системы
+sysUpgrade(){
+    clear
+    echo "sup from sysUpgrade"
+}
+
+mainMenu (){
+    while true; do
+    clear
+    echo "BOOTSTRAP SCRIPT"
+    echo "[1] Configure ip address"
+    echo "[2] Configure SSH access"
+    echo "[3] Configure system timezone"
+    echo "[4] Configure firewall"
+    echo "[5] Install common packages"
+    echo "[6] Install task-oriented packages"
+    echo "[7] Add new user"
+    echo "[8] System upgrade"
+    echo "[q] Exit"
+
+    read -p "Choose an option: " choice
+
+    case $choice in
+        1)
+            ipConfig
+            ;;
+        2)
+            sshkeyGenrate
+            ;;
+        3)
+            timezoneConfig
+            ;;
+        4)
+            firewallConfig
+            ;;
+        5)
+            commonPackages
+            ;;
+        6)
+            taskOrientedPackages
+            ;;
+        7)
+            userAdd
+            ;;
+        8)
+            sysUpgrade
+            ;;
+        q)
+            echo "Exiting..."
+            exit
+            ;;
+        *)
+            echo "Bad input, please choose the number between 1-8"
+            ;;
+    esac
+
+    read -p "Press Enter to continue..."
+    done
+}
+
+
+mainMenu
