@@ -4,7 +4,6 @@ RED='\033[0;31m'
 GRE='\033[0;32m'
 YEL='\033[0;33m'
 NRM='\033[0m'
-userList=$(awk -F: '($3>=1000)&&($1!="nobody"){print $1}' /etc/passwd) #userlist
 
 # Ensure we are running under bash
 if [ "$BASH_SOURCE" = "" ]; then
@@ -105,13 +104,13 @@ ipConfig () {
 #all good
 sshkeyGenrate(){
     clear
-    
-    if [ $(echo $userList | tr ' ' '\n' | wc -l) -gt 1 ]; then #if more than 1 choose
+    userList=$(awk -F: '($3>=1000)&&($1!="nobody"){print $1}' /etc/passwd) #userlist
+    if [ $(echo "$userList" | tr ' ' '\n' | wc -l) -gt 1 ]; then #if more than 1 choose
         printf "${GRE}Users:\n$(awk -F: '($3>=1000)&&($1!="nobody"){print "  " $1}' /etc/passwd)\n${NRM}"
         printf "${YEL}Enter desired user: ${NRM}"
         read -p "" usr 
 
-        if [ -z $(echo $userList | grep "$usr") ]; then #invalid user
+        if [ -z $(echo "$userList" | grep "$usr") ]; then #invalid user
             printf "${RED}Invalid user${NRM}\n"
             read -p "Press Enter to continue..."
             mainMenu
@@ -127,14 +126,14 @@ sshkeyGenrate(){
             [Yy]* )
                 mkdir /home/$usr/.ssh
                 chmod 0700 /home/$usr/.ssh
-                printf "${GRE}/home/$usr/.ssh has been created${NRM}"
+                printf "${GRE}/home/$usr/.ssh has been created\n${NRM}"
 
                 touch /home/$usr/.ssh/authorized_keys
                 chmod 0600 /home/$usr/.ssh/authorized_keys
-                printf "${GRE}/home/$usr/.ssh/authorized_keys has been created${NRM}"
+                printf "${GRE}/home/$usr/.ssh/authorized_keys has been created\n${NRM}"
 
                 chown -R $usr:$usr /home/$usr/.ssh
-                printf "${GRE}Owner specified to $usr${NRM}"
+                printf "${GRE}Owner specified to $usr\n${NRM}"
                 ;;
             [Nn]* )
                 mainMenu
@@ -162,9 +161,9 @@ sshkeyGenrate(){
             ssh-keygen -t ed25519 -C "$keyComment" -f /home/$usr/.ssh/$keyName -N "$keyPasswd"
 
             if [ -e "/home/$usr/.ssh/$keyName" ]; then
-                printf "${GRE}\nAll good! Your keys stored at /home/$usr/.ssh/${NRM}"
+                printf "${GRE}\nAll good! Your keys stored at /home/$usr/.ssh/\n${NRM}"
             else
-                printf "${RED}\nSomething went wrong..${NRM}"
+                printf "${RED}\nSomething went wrong..\n${NRM}"
                 mainMenu
             fi
             ;;
@@ -209,10 +208,76 @@ timezoneConfig(){
     done
 }
 
-#need to update
+#all good
 firewallConfig(){
-    clear
-    echo "sup from firewallConfig"
+    firewallStatus(){
+        if [ "$(ufw status | awk '/^Status:/{print $2}')" = "active" ]; then
+            printf "${GRE}$(ufw status | awk '/^Status:/{print $2}')\n${NRM}" 
+            if [ ! -z "$(ufw status | awk '/^[0-9]/{print $0}' | grep "ALLOW")" ]; then
+                printf "${GRE}$(ufw status | awk '/^[0-9]/{print $0}' | grep "ALLOW")\n${NRM}"
+            fi
+            if [ ! -z "$(ufw status | awk '/^[0-9]/{print $0}' | grep "DENY")" ]; then
+                printf "${RED}$(ufw status | awk '/^[0-9]/{print $0}' | grep "DENY")\n${NRM}"
+            fi
+        else
+            printf "${RED}$(ufw status | awk '/^Status:/{print $2}')\n${NRM}"  
+        fi
+    }
+
+    firewallOption(){
+        if [ "$1" = "reset" ]; then
+            ufw $1
+        else
+            printf "${YEL}Enter an value\nufw $1 ${NRM}"
+            read -p "" Value
+            ufw $1 $Value
+        fi
+    }
+
+    while true; do
+        clear
+        echo "Firewall status: $(firewallStatus)"
+        echo "[1] UFW on/off"
+        echo "[2] UFW allow"
+        echo "[3] UFW deny"
+        echo "[4] UFW delete"
+        echo "[5] UFW reset"
+        echo "[q] Exit"
+
+        printf "${YEL}Choose an option: ${NRM}"
+        read -p "" choice
+
+        case $choice in
+            1)
+                if [ "$(ufw status | awk '/^Status:/{print $2}')" = "active" ]; then
+                    ufw disable  
+                else
+                    ufw enable
+                fi
+                ;;
+            2)
+                firewallOption "allow"
+                ;;
+            3)
+                firewallOption "deny"
+                ;;
+            4)
+                firewallOption "delete"
+                ;;
+            5)
+                firewallOption "reset"
+                ;;
+            q)
+                echo "Exiting..."
+                mainMenu
+                ;;
+            *)
+                echo "Bad input, please choose the number between 1-5"
+                ;;
+        esac
+
+        read -p "Press Enter to continue..."
+    done
 }
 
 #all good
@@ -311,7 +376,7 @@ commonPackages(){
     done
 }
     
-#need to finish
+#all good
 taskOrientedPackages(){
      checkPackageColour() {
         if dpkg -l "$1" &> /dev/null; then
@@ -319,49 +384,7 @@ taskOrientedPackages(){
         else
             printf "${RED}$1${NRM}"  
         fi
-    }
-    packageDocker() {
-        printf "${YEL}Setting up Docker's apt repository\n${NRM}"
-        apt-get install ca-certificates curl gnupg
-        install -m 0755 -d /etc/apt/keyrings
-        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-        chmod a+r /etc/apt/keyrings/docker.gpg
-        echo \
-        "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-        "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
-        tee /etc/apt/sources.list.d/docker.list > /dev/null
-        apt-get update
-
-        printf "${YEL}Installing the Docker packages\n${NRM}"
-        apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-        printf "${YEL}Post-installation process\n${NRM}"
-        groupadd docker
-        usermod -aG docker $USER
-
-        while true; do
-            clear
-            printf "${GRE}All good!${NRM}\n${YEL}Run the hello-world image? [y/n]: ${NRM}"
-            read -p "" yn
-            case $yn in
-                [Yy]* )
-                    docker run hello-world
-                    clear
-                    docker ps
-                    printf "${YEL}Don't forget to relogin or \"newgrp docker\" command\n${NRM}"
-                    read -p "Press Enter to continue..."
-                    mainMenu
-                    ;;
-                [Nn]* )
-                    mainMenu
-                    ;;
-                * )
-                    printf "${RED}Bad input${NRM}\n"
-                    ;;
-            esac
-        done
-    }
-    
+    }    
 
     clear
     apt update
@@ -372,7 +395,7 @@ taskOrientedPackages(){
         echo "Available packages"
         printf "${RED}Uninstalled${NRM}|${GRE}Installed${NRM}\n"
         echo "[1] $(checkPackageColour "docker-ce")"
-        echo "[2] $(checkPackageColour "python")"
+        #echo "[2] $(checkPackageColour "")"
         echo "[q] Back to main menu"
 
         printf "${YEL}Choose an option: ${NRM}"
@@ -381,9 +404,6 @@ taskOrientedPackages(){
         case $choice in
             1)
                 packageDocker
-                ;;
-            2)
-                packagePython
                 ;;
             q)
                 echo "Exiting..."
@@ -408,13 +428,13 @@ userManage(){
             read -p "" yn
             case $yn in
                 [Yy]* )
-                    usermod -aG sudo newuser
-                    printf "${GRE}$1 root permissions has been granted!${NRM}"
+                    usermod -aG sudo $1
+                    printf "${GRE}$1 root permissions has been granted!\n${NRM}"
                     read -p "Press Enter to continue..."
-                    mainMenu
+                    userManage
                     ;;
                 [Nn]* )
-                    mainMenu
+                    userManage
                     ;;
                 * )
                     printf "${RED}Bad input${NRM}\n"
@@ -426,6 +446,11 @@ userManage(){
     userDel(){
         while true; do
             clear
+            if [ -z $(echo "$userList" | grep "$1") ]; then #invalid user
+                printf "${RED}Invalid user${NRM}\n"
+                read -p "Press Enter to continue..."
+                mainMenu
+            fi
             printf "${YEL}$1 and /home/$1/ is going to be deleted\nProceed? [y/n]: ${NRM}"
             read -p "" yn
             case $yn in
@@ -433,10 +458,10 @@ userManage(){
                     deluser --remove-home $1
                     printf "${GRE}$1 has been deleted\n${NRM}"
                     read -p "Press Enter to continue..."
-                    mainMenu
+                    userManage
                     ;;
                 [Nn]* )
-                    mainMenu
+                    userManage
                     ;;
                 * )
                     printf "${RED}Bad input${NRM}\n"
@@ -447,6 +472,8 @@ userManage(){
     }
     while true; do
         clear
+        userList=$(awk -F: '($3>=1000)&&($1!="nobody"){print $1}' /etc/passwd) #userlist
+        printf "${GRE}Users:\n$(awk -F: '($3>=1000)&&($1!="nobody"){print "  " $1}' /etc/passwd)\n${NRM}"
         echo "[1] Add user"
         echo "[2] Delete user"
         echo "[q] Exit"
@@ -454,27 +481,23 @@ userManage(){
         printf "${YEL}Choose an option: ${NRM}"
         read -p "" choice
 
-        printf "${YEL}Enter user name: ${NRM}"
-        read -p "" usr 
-
         case $choice in
             1)
+                printf "${YEL}Enter user name: ${NRM}"
+                read -p "" usr 
                 userAdd "$usr"
                 ;;
             2)
-                if [ -z $(echo $userList | grep "$usr") ]; then #invalid user
-                    printf "${RED}Invalid user${NRM}\n"
-                    read -p "Press Enter to continue..."
-                    mainMenu
-                fi
+                printf "${YEL}Enter user name: ${NRM}"
+                read -p "" usr 
                 userDel "$usr"
                 ;;
             q)
                 echo "Exiting..."
-                exit
+                mainMenu
                 ;;
             *)
-                echo "Bad input, please choose the number between 1-8"
+                echo "Bad input, please choose the number between 1-2"
                 ;;
         esac
         read -p "Press Enter to continue..."
@@ -516,7 +539,7 @@ mainMenu (){
         echo "[2] Configure SSH access"
         echo "[3] Configure system timezone"
         echo "[4] Configure firewall"
-        echo "[5] Install common packages"
+        echo "[5] Install/Delete common packages"
         echo "[6] Install task-oriented packages"
         echo "[7] Manage users"
         echo "[8] System upgrade"
